@@ -40,9 +40,20 @@ class Model(object):
         self.scale = scale
 
         self.texture = []
+
+        self.setShaders(None, None)
+
+        self.normalMap = None
     
     def loadTexture(self, texName):
         self.texture.append(Texture(texName))
+
+    def loadNormalMap(self, filename):
+        self.normalMap = Texture(filename)
+
+    def setShaders(self, vertex, fragment):
+        self.vertexShader = vertex
+        self.fragmentShader = fragment
 
 
 class Renderer(object):
@@ -62,6 +73,7 @@ class Renderer(object):
         self.vertexBuffer = []
 
         self.activeTextures = []
+        self.activeNormalMap = None
 
         self.objects = []
 
@@ -69,7 +81,11 @@ class Renderer(object):
         self.glCamMatrix()
         self.glProjectionMatrix()
 
-        self.directionalLight = (1, 0, 1)
+        self.directionalLight = (1, 0, 0)
+
+        self.activeModelMatrix = None
+
+        self.background = None
         
 
  
@@ -192,45 +208,88 @@ class Renderer(object):
         self.glLine(v2, v0, clr or self.currColor)
 
 
-    def glTriangleBC(self, verts, texCoords, normals):
+    def glTriangleBC(self, Tverts, UTverts, texCoords, normals):
 
-        A = verts[0]
-        B = verts[1]
-        C = verts[2]
+        A = Tverts[0]
+        B = Tverts[1]
+        C = Tverts[2]
+
+        uA = UTverts[0]
+        uB = UTverts[1]
+        uC = UTverts[2]
 
         if A != None and B != None and C != None:
-            minX = round(min(A[0], B[0], C[0]))
-            minY = round(min(A[1], B[1], C[1]))
-            maxX = round(max(A[0], B[0], C[0]))
-            maxY = round(max(A[1], B[1], C[1]))
+            try:
+                minX = round(min(A[0], B[0], C[0]))
+                minY = round(min(A[1], B[1], C[1]))
+                maxX = round(max(A[0], B[0], C[0]))
+                maxY = round(max(A[1], B[1], C[1]))
 
-            for x in range(minX, maxX + 1):
-                for y in range(minY, maxY + 1):
-                    if (0 <= x < self.width) and (0 <= y < self.height):
-                        P = [x, y]
+                edge1 = subtractVectors(uB, uA)
+                edge2 = subtractVectors(uC, uA)
 
-                        bCoords = bcCoords(A, B, C, P)
-                        
-                        if (bCoords != None):
-                            u, v, w = bCoords
+                delta1 = subtractVectors(texCoords[1], texCoords[0])
+                delta2 = subtractVectors(texCoords[2], texCoords[0])
 
-                            z = u * A[2] + v * B[2] + w * C[2]
+                f = 1 / (delta1[0] * delta2[1] - delta2[0] * delta1[1]) #Carlos
+                #f = 1 / (delta1[0] * delta2[1] - delta1[1] * delta2[0]) #Pagina
 
-                            if(z < self.zBuffer[x][y]):
-                                self.zBuffer[x][y] = z
-                                
-                                if (self.fragmentShader != None):
-                                    colorP = self.fragmentShader(texCoords = texCoords, 
-                                                                textures = self.activeTextures,
-                                                                normals = normals,
-                                                                bCoords = bCoords,
-                                                                dLight = self.directionalLight,
-                                                                camMatrix = self.camMatrix,
-                                                                vertex = [A, B, C],
-                                                                vCoords = [x, y, z])
-                                    self.glPoint(x, y, color(colorP[0], colorP[1], colorP[2]))
-                                else:
-                                    self.glPoint(x, y, self.currColor)
+                tangent = [f * (delta2[1] * edge1[0] - delta1[1] * edge2[0]),
+                            f * (delta2[1] * edge1[1] - delta1[1] * edge2[1]),
+                            f * (delta2[1] * edge1[2] - delta1[1] * edge2[2])]
+
+                tangent = normVector(tangent)
+
+                for x in range(minX, maxX + 1):
+                    for y in range(minY, maxY + 1):
+                        if (0 <= x < self.width) and (0 <= y < self.height):
+                            P = [x, y]
+
+                            bCoords = bcCoords(A, B, C, P)
+                            
+                            if (bCoords != None):
+                                u, v, w = bCoords
+
+                                z = u * A[2] + v * B[2] + w * C[2]
+
+                                if(z < self.zBuffer[x][y]):
+                                    self.zBuffer[x][y] = z
+                                    
+                                    if (self.fragmentShader != None):
+                                        colorP = self.fragmentShader(texCoords = texCoords, 
+                                                                    textures = self.activeTextures,
+                                                                    normals = normals,
+                                                                    bCoords = bCoords,
+                                                                    dLight = self.directionalLight,
+                                                                    camMatrix = self.camMatrix,
+                                                                    vertex = [A, B, C],
+                                                                    vCoords = [x, y, z],
+                                                                    modelMatrix = self.activeModelMatrix,
+                                                                    normalMap = self.activeNormalMap,
+                                                                    tangent = tangent)
+                                        self.glPoint(x, y, color(colorP[0], colorP[1], colorP[2]))
+                                    else:
+                                        self.glPoint(x, y, self.currColor)
+            except:
+                pass
+
+
+    def glBackgroundTexture(self, filename):
+        self.background = Texture(filename)
+
+    
+    def glClearBackground(self):
+        self.glClear()
+        
+        if self.background:
+            for x in range(self.vpX, self.vpX + self.vpWidth + 1):
+                for y in range(self.vpY, self.vpY + self.vpHeight + 1):
+                    u = (x - self.vpX) / self.vpWidth
+                    v = (y - self.vpY) / self.vpHeight
+                    texColor = self.background.getColor(u, v)
+
+                    if texColor:
+                        self.glPoint(x, y, color(texColor[0], texColor[1], texColor[2]))
 
 
     def glAddVertices(self, verts):
@@ -238,17 +297,22 @@ class Renderer(object):
             self.vertexBuffer.append(v)
 
 
-    def glPrimitiveAssembly(self, tVerts, tTexCoords, tNormals):
+    def glPrimitiveAssembly(self, tVerts, utVerts, tTexCoords, tNormals):
         primitives = []
 
         if (self.primitiveType == triangles):
             for i in range(0, len(tVerts), 3):
                 triangle = []
 
-                verts = []
-                verts.append(tVerts[i])
-                verts.append(tVerts[i + 1])
-                verts.append(tVerts[i + 2])
+                Tverts = []
+                Tverts.append(tVerts[i])
+                Tverts.append(tVerts[i + 1])
+                Tverts.append(tVerts[i + 2])
+
+                UTverts = []
+                UTverts.append(utVerts[i])
+                UTverts.append(utVerts[i + 1])
+                UTverts.append(utVerts[i + 2])
 
                 texCoords = []
                 texCoords.append(tTexCoords[i])
@@ -260,18 +324,24 @@ class Renderer(object):
                 normals.append(tNormals[i + 1])
                 normals.append(tNormals[i + 2])
 
-                triangle = [verts, texCoords, normals]
+                triangle = [Tverts, UTverts, texCoords, normals]
 
                 primitives.append(triangle)
             
         return primitives
 
 
-    def glLoadModel(self, filename, texNames, translate = (0, 0, 0), rotate = (0, 0, 0), scale = (1, 1, 1)):
+    def glLoadModel(self, filename, texNames, translate = (0, 0, 0), rotate = (0, 0, 0), scale = (1, 1, 1), vertex = None, fragment = None):
         model = Model(filename, translate, rotate, scale)
         for texName in texNames:
             model.loadTexture(texName)
 
+        model.setShaders(vertex, fragment)
+
+        self.objects.append(model)
+
+
+    def glAddModel(self, model):
         self.objects.append(model)
 
 
@@ -279,11 +349,18 @@ class Renderer(object):
         tVerts = []
         tCoords = []
         normals = []
+        utVerts = []
 
         for model in self.objects:
+            tVerts = []
+            tCoords = []
+            normals = []
+            utVerts = []
+            self.vertexShader = model.vertexShader
+            self.fragmentShader = model.fragmentShader
             self.activeTextures = model.texture
-            mMatrix = self.glModelMatrix(model.translate, model.rotate, model.scale)
-            
+            self.activeNormalMap = model.normalMap
+            self.activeModelMatrix = self.glModelMatrix(model.translate, model.rotate, model.scale)   
 
             for face in model.faces:
                 vertCount = len(face)
@@ -295,21 +372,6 @@ class Renderer(object):
                 if vertCount == 4:
                     v3 = model.vertices[face[3][0] - 1]
                 
-                if self.vertexShader:
-                    v0 = self.vertexShader(v0, modelMatrix = mMatrix, viewMatrix = self.viewMatrix, projectionMatrix = self.projectionMatrix, vpMatrix = self.vpMatrix, height = self.height)
-                    v1 = self.vertexShader(v1, modelMatrix = mMatrix, viewMatrix = self.viewMatrix, projectionMatrix = self.projectionMatrix, vpMatrix = self.vpMatrix, height = self.height)
-                    v2 = self.vertexShader(v2, modelMatrix = mMatrix, viewMatrix = self.viewMatrix, projectionMatrix = self.projectionMatrix, vpMatrix = self.vpMatrix, height = self.height)
-                    if vertCount == 4:
-                        v3 = self.vertexShader(v3, modelMatrix = mMatrix, viewMatrix = self.viewMatrix, projectionMatrix = self.projectionMatrix, vpMatrix = self.vpMatrix, height = self.height)
-                
-                tVerts.append(v0)
-                tVerts.append(v1)
-                tVerts.append(v2)
-                if vertCount == 4:
-                    tVerts.append(v0)
-                    tVerts.append(v2)
-                    tVerts.append(v3)
-
                 vt0 = model.texCoords[face[0][1] - 1]
                 vt1 = model.texCoords[face[1][1] - 1]
                 vt2 = model.texCoords[face[2][1] - 1]
@@ -324,7 +386,6 @@ class Renderer(object):
                     tCoords.append(vt2)
                     tCoords.append(vt3)
 
-
                 vn0 = model.normals[face[0][2] - 1]
                 vn1 = model.normals[face[1][2] - 1]
                 vn2 = model.normals[face[2][2] - 1]
@@ -338,12 +399,35 @@ class Renderer(object):
                     normals.append(vn0)
                     normals.append(vn2)
                     normals.append(vn3)
+            
+                utVerts.append(v0)
+                utVerts.append(v1)
+                utVerts.append(v2)
+                if vertCount == 4:
+                    utVerts.append(v0)
+                    utVerts.append(v2)
+                    utVerts.append(v3)  
+                
+                if self.vertexShader:
+                    v0 = self.vertexShader(v0, modelMatrix = self.activeModelMatrix, viewMatrix = self.viewMatrix, projectionMatrix = self.projectionMatrix, vpMatrix = self.vpMatrix, height = self.height, normal = vn0)
+                    v1 = self.vertexShader(v1, modelMatrix = self.activeModelMatrix, viewMatrix = self.viewMatrix, projectionMatrix = self.projectionMatrix, vpMatrix = self.vpMatrix, height = self.height, normal = vn1)
+                    v2 = self.vertexShader(v2, modelMatrix = self.activeModelMatrix, viewMatrix = self.viewMatrix, projectionMatrix = self.projectionMatrix, vpMatrix = self.vpMatrix, height = self.height, normal = vn2)
+                    if vertCount == 4:
+                        v3 = self.vertexShader(v3, modelMatrix = self.activeModelMatrix, viewMatrix = self.viewMatrix, projectionMatrix = self.projectionMatrix, vpMatrix = self.vpMatrix, height = self.height, normal = vn3)
+                
+                tVerts.append(v0)
+                tVerts.append(v1)
+                tVerts.append(v2)
+                if vertCount == 4:
+                    tVerts.append(v0)
+                    tVerts.append(v2)
+                    tVerts.append(v3)              
         
-        primitives = self.glPrimitiveAssembly(tVerts, tCoords, normals)
+            primitives = self.glPrimitiveAssembly(tVerts, utVerts, tCoords, normals)
 
-        for prim in primitives:
-            if (self.primitiveType == triangles):
-                    self.glTriangleBC(prim[0], prim[1], prim[2])
+            for prim in primitives:
+                if (self.primitiveType == triangles):
+                        self.glTriangleBC(prim[0], prim[1], prim[2], prim[3])
 
 
     def rotationMatCalc(self, t, w, a):

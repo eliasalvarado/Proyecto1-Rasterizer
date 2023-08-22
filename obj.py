@@ -10,7 +10,8 @@ class Obj(object):
         self.normals = []
         self.faces = []
 
-        for line in self.lines:
+        for i in range (len(self.lines)):
+            line = self.lines[i]
             try:
                 prefix, value = line.split(" ", 1)
                 value = value.lstrip(" ").rstrip(" ")
@@ -23,8 +24,16 @@ class Obj(object):
             elif prefix == "vt":
                 self.texCoords.append(list(map(float, value.split(" "))))
             elif prefix == "vn":
+                if (value[-1] == '\\'):
+                    value = value.replace('\\', "")
+                    value += self.lines[i + 1].lstrip(" ")
+                    
                 self.normals.append(list(map(float, value.split(" "))))
+                #self.normals.append(list(map(float, value.split(" "))))
             elif prefix == "f":
+                if (value[-1] == '\\'):
+                    value = value.replace('\\', "")
+                    value += self.lines[i + 1].lstrip(" ")
                 try:
                     self.faces.append([list(map(int, vert.split("/"))) for vert in value.split(" ")])
                 

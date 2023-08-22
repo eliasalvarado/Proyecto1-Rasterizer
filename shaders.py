@@ -1,4 +1,4 @@
-from npPirata import multMV, multMM, dot, vectorNegative, normVector, multVectorScalar, subtractVectors, reflectVector, invertMatrix
+from npPirata import multMV, multMM, dot, vectorNegative, normVector, multVectorScalar, subtractVectors, reflectVector, invertMatrix, cross
 from random import random
 
 def vertexShader(vertex, **kwargs):
@@ -6,6 +6,7 @@ def vertexShader(vertex, **kwargs):
     viewMatrix = kwargs["viewMatrix"]
     projectionMatrix = kwargs["projectionMatrix"]
     vpMatrix = kwargs["vpMatrix"]
+    normal = kwargs["normal"]
 
     vt = [vertex[0], 
         vertex[1], 
@@ -28,6 +29,7 @@ def emptyBlocksVertexShader(vertex, **kwargs):
     projectionMatrix = kwargs["projectionMatrix"]
     vpMatrix = kwargs["vpMatrix"]
     height = kwargs["height"]
+    normal = kwargs["normal"]
 
     vt = [vertex[0], 
         vertex[1], 
@@ -106,34 +108,50 @@ def flatShader(**kwargs):
 
 def gouradShader(**kwargs):
     tA, tB, tC = kwargs["texCoords"]
-    texture = kwargs["texture"]
+    textures = kwargs["textures"]
     nA, nB, nC = kwargs["normals"]
     u, v, w = kwargs["bCoords"]
     dLight = kwargs["dLight"]
+    modelMatrix = kwargs["modelMatrix"]
 
-    b= 1.0
-    g= 1.0
-    r= 1.0
+    r = b = g = 0
 
-    if texture != None:
-        tU= u * tA[0] + v * tB[0] + w * tC[0]
-        tV= u * tA[1] + v * tB[1] + w * tC[1]
-        
-        textureColor = texture.getColor(tU, tV)    
-        b *= textureColor[2]
-        g *= textureColor[1]
-        r *= textureColor[0]
+    for texture in textures:
+        if texture != None:
+            tU= u * tA[0] + v * tB[0] + w * tC[0]
+            tV= u * tA[1] + v * tB[1] + w * tC[1]
+            
+            textureColor = texture.getColor(tU, tV)    
+            b += textureColor[2]
+            g += textureColor[1]
+            r += textureColor[0]
+
+    
 
     normal= [u * nA[0] + v * nB[0] + w * nC[0],
              u * nA[1] + v * nB[1] + w * nC[1],
-             u * nA[2] + v * nB[2] + w * nC[2]]
+             u * nA[2] + v * nB[2] + w * nC[2],
+             0]
+
+    normal = multMV(modelMatrix, normal)
+    normal = [normal[0],
+            normal[1],
+            normal[2]]
     
     dLight= vectorNegative(dLight)
     intensity= dot(normal, dLight)
     
-    b *= intensity
-    g *= intensity
-    r *= intensity
+    b *= intensity * len(textures)
+    g *= intensity * len(textures)
+    r *= intensity * len(textures)
+
+    """ r /= len(textures)
+    g /= len(textures)
+    b /= len(textures) """
+
+    if (r > 1): r = 1
+    if (g > 1): g = 1
+    if (b > 1): b = 1
 
     if intensity > 0:
         return r, g, b
@@ -147,16 +165,18 @@ def customShader(**kwargs):
     nA, nB, nC = kwargs["normals"]
     u, v, w = kwargs["bCoords"]
     dLight = kwargs["dLight"]
+    normalMap = kwargs["normalMap"]
+    tangent = kwargs["tangent"]
 
     b= 1.0
     g= 1.0
     r= 1.0
 
+    tU= u * tA[0] + v * tB[0] + w * tC[0]
+    tV= u * tA[1] + v * tB[1] + w * tC[1]
+
     for texture in textures:
-        if texture != None:
-            tU= u * tA[0] + v * tB[0] + w * tC[0]
-            tV= u * tA[1] + v * tB[1] + w * tC[1]
-            
+        if texture != None:            
             textureColor = texture.getColor(tU, tV)    
             b *= textureColor[2]
             g *= textureColor[1]
@@ -167,7 +187,35 @@ def customShader(**kwargs):
              u * nA[2] + v * nB[2] + w * nC[2]]
     
     dLight= vectorNegative(dLight)
-    intensity= dot(normal, dLight)
+
+    if normalMap:
+        texNormal = normalMap.getColor(tU, tV)
+        texNormal = [texNormal[0] * 2 - 1,
+                    texNormal[1] * 2 - 1,
+                    texNormal[2] * 2 - 1]
+
+        texNormal = normVector(texNormal)
+
+        biTangent = cross(normal, tangent)
+        biTangent = normVector(biTangent)
+
+        tangent = cross(normal, biTangent)
+        tangent = normVector(tangent)
+
+        tangentM = [[tangent[0], biTangent[0], normal[0]],
+                    [tangent[1], biTangent[1], normal[1]],
+                    [tangent[2], biTangent[2], normal[2]]]
+
+        texNormal = multMV(tangentM, texNormal)
+        texNormal = normVector(texNormal)
+
+        texNormal = [texNormal[0],
+                    texNormal[1],
+                    texNormal[2]]
+
+        intensity = dot(texNormal, dLight)
+    else:
+        intensity= dot(normal, dLight)
     
     b *= intensity
     g *= intensity
@@ -182,11 +230,19 @@ def customShader(**kwargs):
 def multiTextureShader(**kwargs):
     tA, tB, tC = kwargs["texCoords"]
     textures = kwargs["textures"]
+    nA, nB, nC = kwargs["normals"]
     u, v, w = kwargs["bCoords"]
+    dLight = kwargs["dLight"]
+    normalMap = kwargs["normalMap"]
+    tangent = kwargs["tangent"]
 
-    b = 0
-    g = 0
-    r = 0
+    r = g = b = 0
+
+    normal= [u * nA[0] + v * nB[0] + w * nC[0],
+             u * nA[1] + v * nB[1] + w * nC[1],
+             u * nA[2] + v * nB[2] + w * nC[2]]
+    
+    dLight= vectorNegative(dLight)
 
     for texture in textures:
         if texture != None:
@@ -202,7 +258,44 @@ def multiTextureShader(**kwargs):
     g /= len(textures)
     b /= len(textures)
 
-    return r, g, b
+    if normalMap:
+        texNormal = normalMap.getColor(tU, tV)
+        texNormal = [texNormal[0] * 2 - 1,
+                    texNormal[1] * 2 - 1,
+                    texNormal[2] * 2 - 1]
+
+        texNormal = normVector(texNormal)
+
+        biTangent = cross(normal, tangent)
+        biTangent = normVector(biTangent)
+
+        tangent = cross(normal, biTangent)
+        tangent = normVector(tangent)
+
+        tangentM = [[tangent[0], biTangent[0], normal[0]],
+                    [tangent[1], biTangent[1], normal[1]],
+                    [tangent[2], biTangent[2], normal[2]]]
+
+        texNormal = multMV(tangentM, texNormal)
+        texNormal = normVector(texNormal)
+
+        texNormal = [texNormal[0],
+                    texNormal[1],
+                    texNormal[2]]
+
+        intensity = dot(texNormal, dLight)
+    else:
+        intensity= dot(normal, dLight)
+
+    b *= intensity
+    g *= intensity
+    r *= intensity
+
+    if intensity > 0:
+        return r, g, b
+
+    else:
+        return [0,0,0]
 
 def heightColorShader(**kwargs):
     tA, tB, tC = kwargs["texCoords"]
@@ -326,6 +419,8 @@ def metallicShader(**kwargs):
     u, v, w = kwargs["bCoords"]
     dLight = kwargs["dLight"]
     viewDir = kwargs["camMatrix"]
+    normalMap = kwargs["normalMap"]
+    tangent = kwargs["tangent"]
 
     normal = [u * nA[0] + v * nB[0] + w * nC[0],
                 u * nA[1] + v * nB[1] + w * nC[1],
@@ -368,3 +463,90 @@ def metallicShader(**kwargs):
     if (b > 1): b = 1
 
     return r, g, b
+
+def pruebaShader(**kwargs):
+    tA, tB, tC = kwargs["texCoords"]
+    textures = kwargs["textures"]
+    nA, nB, nC = kwargs["normals"]
+    u, v, w = kwargs["bCoords"]
+    dLight = kwargs["dLight"]
+    normalMap = kwargs["normalMap"]
+    tangent = kwargs["tangent"]
+    modelMatrix = kwargs["modelMatrix"]
+
+    r = g = b = 0
+
+    normal= [u * nA[0] + v * nB[0] + w * nC[0],
+             u * nA[1] + v * nB[1] + w * nC[1],
+             u * nA[2] + v * nB[2] + w * nC[2]]
+
+    """ normal= [u * nA[0] + v * nB[0] + w * nC[0],
+             u * nA[1] + v * nB[1] + w * nC[1],
+             u * nA[2] + v * nB[2] + w * nC[2],
+             0]
+    normal = multMV(modelMatrix, normal)
+    normal = [normal[0], normal[1], normal[2]] """
+    
+    dLight= vectorNegative(dLight)
+
+    for texture in textures:
+        if texture != None:
+            tU= u * tA[0] + v * tB[0] + w * tC[0]
+            tV= u * tA[1] + v * tB[1] + w * tC[1]
+            
+            textureColor = texture.getColor(tU, tV)    
+            b += textureColor[2]
+            g += textureColor[1]
+            r += textureColor[0]
+
+    r /= len(textures)
+    g /= len(textures)
+    b /= len(textures)
+
+    if normalMap:
+        texNormal = normalMap.getColor(tU, tV)
+        texNormal = [texNormal[0] * 2 - 1,
+                    texNormal[1] * 2 - 1,
+                    texNormal[2] * 2 - 1]
+
+        texNormal = normVector(texNormal)
+
+        biTangent = cross(normal, tangent)
+        biTangent = normVector(biTangent)
+
+        tangent = cross(normal, biTangent)
+        tangent = normVector(tangent)
+
+        tangentM = [[tangent[0], biTangent[0], normal[0]],
+                    [tangent[1], biTangent[1], normal[1]],
+                    [tangent[2], biTangent[2], normal[2]]]
+
+        texNormal = multMV(tangentM, texNormal)
+        texNormal = normVector(texNormal)
+
+        intensity = dot(texNormal, dLight)
+
+        """ texNormal = [texNormal[0],
+                    texNormal[1],
+                    texNormal[2]]
+
+        r += texNormal[0]
+        g += texNormal[1]
+        b += texNormal[2] """
+    else:
+        intensity = dot(normal, dLight)
+        #pass
+
+    b *= intensity
+    g *= intensity
+    r *= intensity
+
+    if (r >= 1): r = 1
+    if (g >= 1): g = 1
+    if (b >= 1): b = 1
+
+    if intensity > 0:
+        return r, g, b
+
+    else:
+        return 0, 0, 0
