@@ -1,11 +1,7 @@
 from gl import Renderer, Model
 import shaders
 
-""" #Dims para fondo
-width = 500
-height = 500 """
-
-#Dims para fondo
+#Dimensiones para fondo
 width = 1240
 height = 2048
 
@@ -18,98 +14,93 @@ rend.glClearBackground()
 #Ojo de Sauron
 scaleDimSauron = 4
 sauronEye = Model(filename = "sauroneye.obj",
-            translate=(0.2, 31.2, -100),
-            rotate=(0.3, 99.7, 0),
-            scale=(scaleDimSauron, scaleDimSauron, scaleDimSauron))
-for texture in ["sauroneye.bmp"]:
-    sauronEye.loadTexture(texName=texture)
+                translate=(0.2, 31.2, -100),
+                rotate=(0.3, 99.7, 0),
+                scale=(scaleDimSauron, scaleDimSauron, scaleDimSauron))
+sauronEye.loadTexture(texName="sauroneye.bmp")
 sauronEye.setShaders(vertex= shaders.vertexShader,
-            fragment= shaders.gouradShader)
+                    fragment= shaders.multiTextureShader)
 sauronEye.directionalLight = (-0.3, -0.4, -0.5)
 rend.glAddModel(sauronEye)
 
-""" #Segundo modelo
+#Segundo modelo
 #Anillo del poder
 scaleDimRing = 4
-powerRing = Model(filename = "anillo1.obj",
-            translate=(0.3, -13, -40),
-            rotate=(0, 0, 0.5),
-            scale=(scaleDimRing, scaleDimRing, scaleDimRing))
-for texture in ["anillo1tex.bmp"]:
-    powerRing.loadTexture(texName=texture)
+powerRing = Model(filename = "powerRing.obj",
+                translate=(0.3, -13, -40),
+                rotate=(0, 0, 0.5),
+                scale=(scaleDimRing, scaleDimRing, scaleDimRing))
+powerRing.loadTexture(texName="powerRing.bmp")
 powerRing.setShaders(vertex= shaders.vertexShader,
-            fragment= shaders.multiTextureShader)
+                    fragment= shaders.metallicShader)
 powerRing.directionalLight = (0, 0, -0.7)
-rend.glAddModel(powerRing) """
+rend.glAddModel(powerRing)
 
-""" #Tercer modelo
+#Tercer modelo
 #Espada Narsil rota
 scaleDimSword = 10
-narsilSword = Model(filename = "sword4.obj",
-            translate=(0, -13, -40),
-            rotate=(-90, 0, 0),
-            scale=(scaleDimSword, scaleDimSword, scaleDimSword))
-for texture in ["sword1tex.bmp"]:
-    narsilSword.loadTexture(texName=texture)
+narsilSword = Model(filename = "narsil.obj",
+                translate=(0, -13, -40),
+                rotate=(-90, 0, 0),
+                scale=(scaleDimSword, scaleDimSword, scaleDimSword))
+narsilSword.loadTexture(texName="narsil.bmp")
 narsilSword.setShaders(vertex= shaders.vertexShader,
-            fragment= shaders.pruebaShader)
-narsilSword.directionalLight = (0, 1, 0)
-rend.glAddModel(narsilSword) """
+                    fragment= shaders.heightColorShader)
+narsilSword.directionalLight = (0, -1, 0)
+rend.glAddModel(narsilSword)
 
-""" #Cuarto modelo
+#Cuarto modelo
 #Argonath
 scaleDimStatue = 6
-argonathStatue = Model(filename = "estatua.obj",
-            translate=(0, -8, -50),
-            rotate=(0.2, 0, 0),
-            scale=(scaleDimStatue, scaleDimStatue, scaleDimStatue))
-for texture in ["estatuatex.bmp"]:
-    argonathStatue.loadTexture(texName=texture)
+argonathStatue = Model(filename = "argonath.obj",
+                translate=(0, -8, -50),
+                rotate=(0.2, 0, 0),
+                scale=(scaleDimStatue, scaleDimStatue, scaleDimStatue))
+argonathStatue.loadTexture(texName="argonath.bmp")
 argonathStatue.setShaders(vertex= shaders.vertexShader,
-            fragment= shaders.pruebaShader)
+                        fragment= shaders.sepiaColorShader)
 argonathStatue.directionalLight = (0, 0, -0.5)
-rend.glAddModel(argonathStatue) """
+rend.glAddModel(argonathStatue)
 
-""" #Quinto modelo
+#Quinto modelo
 #Espada de Frodo - Dardo
 scaleDimDardo = 1.5
-dardo = Model(filename = "swordprueba.obj",
+dardo = Model(filename = "dardo.obj",
             translate=(-17, -26, -100),
             rotate=(80, -10.1, 0),
             scale=(scaleDimDardo, scaleDimDardo, scaleDimDardo))
-for texture in ["swordtex.bmp", "swordtex1.bmp"]:
+texturesDardo = ["dardotex.bmp", "dardotex1.bmp"]
+for texture in texturesDardo:
     dardo.loadTexture(texName=texture)
 dardo.setShaders(vertex= shaders.vertexShader,
-            fragment= shaders.neonShader)
+                fragment= shaders.neonShader)
 dardo.directionalLight = (1, 0, 0)
-rend.glAddModel(dardo) """
+rend.glAddModel(dardo)
 
-""" #Sexto modelo
+#Sexto modelo
 #Hacha Gilmi
 scaleDimAxe = 20
-gimliLeft = Model(filename = "hacha.obj",
-            translate=(-2, -40, -50),
-            rotate=(0, 0, 0.5),
-            scale=(scaleDimAxe, scaleDimAxe, scaleDimAxe))
-for texture in ["hachatex2.bmp"]:
-    gimliLeft.loadTexture(texName=texture)
+gimliLeft = Model(filename = "gilmi.obj",
+                translate=(-2, -40, -50),
+                rotate=(0, 0, 0.5),
+                scale=(scaleDimAxe, scaleDimAxe, scaleDimAxe))
+gimliLeft.loadTexture(texName="gilmi.bmp")
 gimliLeft.setShaders(vertex= shaders.vertexShader,
-            fragment= shaders.multiTextureShader)
-gimliLeft.loadNormalMap(filename="hachanormal.bmp")
+                    fragment= shaders.normalMapShader)
+gimliLeft.loadNormalMap(filename="gilminormal.bmp")
 gimliLeft.directionalLight = (1, 0, -1)
 rend.glAddModel(gimliLeft)
 
-gimliRight = Model(filename = "hacha.obj",
-            translate=(2, -40, -50),
-            rotate=(0, 0, -0.5),
-            scale=(scaleDimAxe, scaleDimAxe, scaleDimAxe))
-for texture in ["hachatex2.bmp"]:
-    gimliRight.loadTexture(texName=texture)
+gimliRight = Model(filename = "gilmi.obj",
+                translate=(2, -40, -50),
+                rotate=(0, 0, -0.5),
+                scale=(scaleDimAxe, scaleDimAxe, scaleDimAxe))
+gimliRight.loadTexture(texName="gilmi.bmp")
 gimliRight.setShaders(vertex= shaders.vertexShader,
-            fragment= shaders.multiTextureShader)
-gimliRight.loadNormalMap(filename="hachanormal.bmp")
+                    fragment= shaders.normalMapShader)
+gimliRight.loadNormalMap(filename="gilminormal.bmp")
 gimliRight.directionalLight = (1, 0, -1)
-rend.glAddModel(gimliRight) """
+rend.glAddModel(gimliRight)
 
 
 
@@ -117,5 +108,5 @@ rend.glLookAt(camPos=(0, 0, 0),
                 eyePos=(0, 0, -500))
 
 rend.glRender()
-rend.glFinish("output.bmp")
+rend.glFinish("rasterizer.bmp")
 
