@@ -5,4 +5,6 @@ Todo se realizó en Python, y utilizando como guía OpenGL.
 
 La escena creada se basa en un poster de la película El Señor de los Anillos.
 
-![Image text]([https://github.com/zzuljs/CppLearning/blob/master/CppLearning/raw/master/Itachi.jpg](https://github.com/eliasalvarado/Proyecto1-Rasterizer/blob/main/rasterizer.bmp)https://github.com/eliasalvarado/Proyecto1-Rasterizer/blob/main/rasterizer.bmp)
+## Resultado final
+![image](https://github.com/eliasalvarado/Proyecto1-Rasterizer/assets/77988653/f8f3c11b-8ff5-491b-b0d1-c00ccf12740a)
+
