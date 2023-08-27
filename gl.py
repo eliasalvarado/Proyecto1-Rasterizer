@@ -44,6 +44,8 @@ class Model(object):
         self.setShaders(None, None)
 
         self.normalMap = None
+
+        self.directionalLight = (1, 0, 0)
     
     def loadTexture(self, texName):
         self.texture.append(Texture(texName))
@@ -81,7 +83,7 @@ class Renderer(object):
         self.glCamMatrix()
         self.glProjectionMatrix()
 
-        self.directionalLight = (1, 0, 0)
+        self.activeDirectionalLight = (1, 0, 0)
 
         self.activeModelMatrix = None
 
@@ -260,7 +262,7 @@ class Renderer(object):
                                                                     textures = self.activeTextures,
                                                                     normals = normals,
                                                                     bCoords = bCoords,
-                                                                    dLight = self.directionalLight,
+                                                                    dLight = self.activeDirectionalLight,
                                                                     camMatrix = self.camMatrix,
                                                                     vertex = [A, B, C],
                                                                     vCoords = [x, y, z],
@@ -359,6 +361,7 @@ class Renderer(object):
             self.vertexShader = model.vertexShader
             self.fragmentShader = model.fragmentShader
             self.activeTextures = model.texture
+            self.activeDirectionalLight = model.directionalLight
             self.activeNormalMap = model.normalMap
             self.activeModelMatrix = self.glModelMatrix(model.translate, model.rotate, model.scale)   
 
